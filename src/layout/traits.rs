@@ -49,6 +49,22 @@ pub trait Layout: ObjcAccess {
         })
     }
 
+    /// Returns the array of views embedded in the current view.
+    fn subviews<T: 'static>(&self) -> Vec<ManuallyDrop<View<T>>> {
+        self.get_from_backing_obj(|backing_node| unsafe {
+            let contents: id = msg_send![backing_node, subviews];
+
+            if contents == nil {
+                return Vec::new();
+            }
+
+            NSArray::retain(contents)
+                .map(|view| {
+                    ManuallyDrop::new(View::from_existing::<T>(view))
+                })
+        })
+    }
+
     /// Adds another Layout-backed control or view as a subview of this view.
     fn add_subview<V: Layout>(&self, view: &V) {
         self.with_backing_obj_mut(|backing_node| {
