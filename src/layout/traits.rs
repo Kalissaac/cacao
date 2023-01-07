@@ -1,6 +1,8 @@
 //! Various traits related to controllers opting in to autolayout routines and support for view
 //! heirarchies.
 
+use std::mem::ManuallyDrop;
+
 use core_graphics::base::CGFloat;
 use core_graphics::geometry::{CGPoint, CGRect, CGSize};
 
@@ -11,6 +13,7 @@ use objc_id::ShareId;
 use crate::foundation::{id, nil, to_bool, NSArray, NSString, NO, YES};
 use crate::geometry::Rect;
 use crate::objc_access::ObjcAccess;
+use crate::view::View;
 
 #[cfg(feature = "appkit")]
 use crate::pasteboard::PasteboardType;
@@ -30,6 +33,20 @@ pub trait Layout: ObjcAccess {
                 false => NO
             }];
         });
+    }
+
+    /// Returns the view that is the parent of the current view.
+    fn superview<T: 'static>(&self) -> Option<ManuallyDrop<View<T>>> {
+        self.get_from_backing_obj(|backing_node| unsafe {
+            let superview: id = msg_send![backing_node, superview];
+
+            if superview == nil {
+                return None;
+            }
+
+            let view = View::from_existing::<T>(superview);
+            Some(ManuallyDrop::new(view))
+        })
     }
 
     /// Adds another Layout-backed control or view as a subview of this view.
