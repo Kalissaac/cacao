@@ -41,6 +41,17 @@ pub trait Layout: ObjcAccess {
         });
     }
 
+    /// Replaces one of the view’s subviews with another view.
+    fn replace_subview<V: Layout, W: Layout>(&self, old_view: &V, new_view: &W) {
+        self.with_backing_obj_mut(|backing_node| {
+            old_view.with_backing_obj_mut(|old_view_node| {
+                new_view.with_backing_obj_mut(|new_view_node| unsafe {
+                    let _: () = msg_send![backing_node, replaceSubview:old_view_node with:new_view_node];
+                });
+            });
+        });
+    }
+
     /// Removes a control or view from the superview.
     fn remove_from_superview(&self) {
         self.with_backing_obj_mut(|backing_node| unsafe {
