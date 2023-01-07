@@ -42,6 +42,8 @@
 //!
 //! For more information on Autolayout, view the module or check out the examples folder.
 
+use std::any::TypeId;
+
 use objc::runtime::{Class, Object};
 use objc::{msg_send, sel, sel_impl};
 
@@ -218,6 +220,61 @@ impl View {
             #[cfg(all(feature = "appkit", target_os = "macos"))]
             animator: ViewAnimatorProxy::new(view),
             objc: ObjcProperty::retain(view)
+        }
+    }
+
+    pub(crate) fn from_existing<T: 'static>(view: id) -> View<T> {
+        let delegate = unsafe {
+            if TypeId::of::<T>() == TypeId::of::<()>() {
+                None
+            } else {
+                let ptr: usize = *(&*view).get_ivar(VIEW_DELEGATE_PTR);
+                let obj = ptr as *mut T;
+                Some(Box::from_raw(obj))
+            }
+        };
+        View {
+            is_handle: true,
+            delegate,
+
+            #[cfg(feature = "autolayout")]
+            safe_layout_guide: SafeAreaLayoutGuide::new(view),
+
+            #[cfg(feature = "autolayout")]
+            top: LayoutAnchorY::top(view),
+
+            #[cfg(feature = "autolayout")]
+            left: LayoutAnchorX::left(view),
+
+            #[cfg(feature = "autolayout")]
+            leading: LayoutAnchorX::leading(view),
+
+            #[cfg(feature = "autolayout")]
+            right: LayoutAnchorX::right(view),
+
+            #[cfg(feature = "autolayout")]
+            trailing: LayoutAnchorX::trailing(view),
+
+            #[cfg(feature = "autolayout")]
+            bottom: LayoutAnchorY::bottom(view),
+
+            #[cfg(feature = "autolayout")]
+            width: LayoutAnchorDimension::width(view),
+
+            #[cfg(feature = "autolayout")]
+            height: LayoutAnchorDimension::height(view),
+
+            #[cfg(feature = "autolayout")]
+            center_x: LayoutAnchorX::center(view),
+
+            #[cfg(feature = "autolayout")]
+            center_y: LayoutAnchorY::center(view),
+
+            layer: Layer::wrap(unsafe { msg_send![view, layer] }),
+
+            #[cfg(all(feature = "appkit", target_os = "macos"))]
+            animator: ViewAnimatorProxy::new(view),
+            objc: ObjcProperty::from_retained(view)
         }
     }
 
